@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSchema } from '@data/_schema/registry';
 import { create, getAll, getById, remove, update, JsonDBError } from '@/lib/json-db';
-import type { BaseRecord } from '@/lib/types';
+import type { BaseRecord, QueryOptions } from '@/lib/types';
 
 interface RouteContext { params: Promise<{ collection: string }>; }
 
@@ -16,7 +16,12 @@ export async function GET(request: Request, { params }: RouteContext) {
     if (!getSchema(collection)) return errorResponse(new JsonDBError('Colección no registrada', 'NOT_FOUND', 404));
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
-    const data = id ? await getById(collection, id) : await getAll(collection, { limit: Number(url.searchParams.get('limit') ?? 50), offset: Number(url.searchParams.get('offset') ?? 0), sortBy: url.searchParams.get('sortBy') ?? undefined, sortOrder: (url.searchParams.get('sortOrder') as 'asc' | 'desc' | null) ?? undefined });
+    const queryOptions: QueryOptions = { limit: Number(url.searchParams.get('limit') ?? 50), offset: Number(url.searchParams.get('offset') ?? 0) };
+    const sortBy = url.searchParams.get('sortBy');
+    const sortOrder = url.searchParams.get('sortOrder');
+    if (sortBy) queryOptions.sortBy = sortBy;
+    if (sortOrder === 'asc' || sortOrder === 'desc') queryOptions.sortOrder = sortOrder;
+    const data = id ? await getById(collection, id) : await getAll(collection, queryOptions);
     return NextResponse.json({ success: true, data, timestamp: new Date().toISOString() });
   } catch (error) { return errorResponse(error); }
 }
