@@ -1,0 +1,59 @@
+:root {
+  --ink: #f8fafc;
+  --muted: rgba(248, 250, 252, 0.66);
+  --line: rgba(248, 250, 252, 0.18);
+  --gradient-1: #0f0c29;
+  --gradient-2: #302b63;
+  --gradient-3: #24243e;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--gradient-1);
+  color: var(--ink);
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+button { font: inherit; }
+
+.home-shell { min-height: 100vh; overflow: hidden; }
+
+.hola-mundo {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(120deg, var(--gradient-1), var(--gradient-2), var(--gradient-3), var(--gradient-1));
+  background-size: 300% 300%;
+}
+
+.hola-mundo::before,
+.hola-mundo::after {
+  position: absolute;
+  z-index: -1;
+  display: block;
+  width: 38vw;
+  height: 38vw;
+  border-radius: 50%;
+  content: '';
+  filter: blur(80px);
+  opacity: 0.28;
+}
+
+.hola-mundo::before { top: -18vw; left: -10vw; background: var(--accent-primary); }
+.hola-mundo::after { right: -14vw; bottom: -20vw; background: var(--accent-secondary); }
+
+.hola-content { padding: 2rem; text-align: center; }
+.hola-title { margin: 0; font-size: clamp(4.5rem, 15vw, 10rem); font-weight: 800; letter-spacing: -0.08em; line-height: 0.85; }
+.hola-word { display: block; }
+.hola-word:last-child { color: transparent; background: linear-gradient(90deg, #93c5fd, #c4b5fd); background-clip: text; }
+.hola-divider { width: min(18rem, 70vw); height: 1px; margin: 2.25rem auto 1.25rem; background: var(--line); transform-origin: center; }
+.hola-subtitle { margin: 0; color: var(--muted); font-size: clamp(1rem, 2vw, 1.25rem); letter-spacing: 0.08em; }
+.ts-badge { display: inline-block; margin-top: 2rem; padding: 0.5rem 1rem; border: 1px solid var(--line); border-radius: 999px; color: #bfdbfe; font-family: monospace; font-size: 0.875rem; }
