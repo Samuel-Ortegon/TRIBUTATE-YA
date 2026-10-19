@@ -1,9 +1,5 @@
-import { HolaMundo } from '@/components/home/HolaMundo';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return (
-    <main className="home-shell">
-      <HolaMundo />
-    </main>
-  );
+  redirect('/login');
 }
