@@ -13,3 +13,13 @@ export function getSupabaseConfig() {
   if (!url || !publicKey) return null;
   return { url: url.replace(/\/$/, ''), publicKey };
 }
+
+export function getSupabaseAdminKey() {
+  return (
+    process.env.TRIBUTATE_YA_SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.TRIBUTATE_YA_SUPABASE_SECRET_KEY ??
+    process.env.SUPABASE_SECRET_KEY ??
+    null
+  );
+}

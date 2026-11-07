@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 
-type LoginMode = 'login' | 'changePassword';
+type LoginMode = 'login' | 'changePassword' | 'firstLogin';
 
 export default function LoginPage() {
   const [error, setError] = useState('');
@@ -23,12 +23,65 @@ export default function LoginPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: formData.get('email'), password: formData.get('password') }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as { error?: string; mustChangePassword?: boolean };
       if (!response.ok) {
         setError(result.error ?? 'No se pudo iniciar sesión');
         return;
       }
-      window.location.assign('/');
+      if (result.mustChangePassword) {
+        setMode('firstLogin');
+        setSuccess('Antes de continuar, completa tu perfil y cambia la contraseña temporal.');
+        return;
+      }
+      window.location.assign('/contador');
+    } catch {
+      setError('No se pudo conectar. Inténtalo de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleFirstLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const fullName = String(formData.get('fullName') ?? '').trim();
+    const newPassword = String(formData.get('newPassword') ?? '');
+    const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+    if (!fullName) {
+      setError('Escribe tu nombre completo.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('La nueva contraseña debe tener al menos 8 caracteres.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Las contraseñas nuevas no coinciden.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/complete-first-login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fullName, newPassword }),
+      });
+      const result = (await response.json()) as { error?: string; message?: string };
+      if (!response.ok) {
+        setError(result.error ?? 'No se pudo completar el primer acceso.');
+        return;
+      }
+      setSuccess(result.message ?? 'Datos guardados correctamente.');
+      event.currentTarget.reset();
+      setMode('login');
     } catch {
       setError('No se pudo conectar. Inténtalo de nuevo.');
     } finally {
@@ -105,11 +158,13 @@ export default function LoginPage() {
       <section className="login-main">
         <div className="login-form-wrap">
           <p className="eyebrow login-eyebrow">{mode === 'login' ? 'BIENVENIDO/A' : 'SEGURIDAD'}</p>
-          <h2>{mode === 'login' ? 'Iniciar sesión' : 'Cambiar contraseña'}</h2>
+          <h2>{mode === 'login' ? 'Iniciar sesión' : mode === 'firstLogin' ? 'Completa tu perfil' : 'Cambiar contraseña'}</h2>
           <p className="login-intro">
             {mode === 'login'
               ? 'Ingresa con el correo y la contraseña de tu cuenta.'
-              : 'Introduce tu correo y la contraseña actual para establecer una nueva.'}
+              : mode === 'firstLogin'
+                ? 'Para continuar, guarda tu nombre y establece una contraseña personal.'
+                : 'Introduce tu correo y la contraseña actual para establecer una nueva.'}
           </p>
 
           {mode === 'login' ? (
@@ -125,6 +180,25 @@ export default function LoginPage() {
 
               <button className="login-submit" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Verificando…' : 'Entrar'}
+                <span aria-hidden="true">↗</span>
+              </button>
+            </form>
+          ) : mode === 'firstLogin' ? (
+            <form className="login-form" onSubmit={handleFirstLoginSubmit}>
+              <label htmlFor="fullName">Nombre completo</label>
+              <input id="fullName" name="fullName" type="text" autoComplete="name" placeholder="Tu nombre completo" required />
+
+              <label htmlFor="firstNewPassword">Nueva contraseña</label>
+              <input id="firstNewPassword" name="newPassword" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" minLength={8} required />
+
+              <label htmlFor="firstConfirmPassword">Confirmar nueva contraseña</label>
+              <input id="firstConfirmPassword" name="confirmPassword" type="password" autoComplete="new-password" placeholder="Repite la nueva contraseña" minLength={8} required />
+
+              {error && <p className="login-error" role="alert">{error}</p>}
+              {success && <p className="login-success" role="status">{success}</p>}
+
+              <button className="login-submit" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Guardando…' : 'Guardar y continuar'}
                 <span aria-hidden="true">↗</span>
               </button>
             </form>
@@ -152,17 +226,19 @@ export default function LoginPage() {
             </form>
           )}
 
-          <button
-            type="button"
-            className="login-toggle"
-            onClick={() => {
-              setMode((currentMode) => (currentMode === 'login' ? 'changePassword' : 'login'));
-              setError('');
-              setSuccess('');
-            }}
-          >
-            {mode === 'login' ? 'Cambiar contraseña' : 'Volver a iniciar sesión'}
-          </button>
+          {mode !== 'firstLogin' && (
+            <button
+              type="button"
+              className="login-toggle"
+              onClick={() => {
+                setMode((currentMode) => (currentMode === 'login' ? 'changePassword' : 'login'));
+                setError('');
+                setSuccess('');
+              }}
+            >
+              {mode === 'login' ? 'Cambiar contraseña' : 'Volver a iniciar sesión'}
+            </button>
+          )}
 
           <p className="login-footnote">La autenticación está protegida por Supabase.</p>
         </div>

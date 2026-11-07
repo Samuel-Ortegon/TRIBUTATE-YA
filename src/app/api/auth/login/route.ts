@@ -47,13 +47,20 @@ export async function POST(request: Request) {
     access_token?: string;
     refresh_token?: string;
     expires_in?: number;
-    user?: { id?: string; email?: string };
+    user?: {
+      id?: string;
+      email?: string;
+      app_metadata?: { must_change_password?: boolean };
+    };
   };
   if (!session.access_token || !session.refresh_token || !session.user?.id) {
     return NextResponse.json({ error: 'Respuesta de autenticación inválida' }, { status: 502 });
   }
 
-  const response = NextResponse.json({ user: { id: session.user.id, email: session.user.email } });
+  const response = NextResponse.json({
+    user: { id: session.user.id, email: session.user.email },
+    mustChangePassword: session.user.app_metadata?.must_change_password === true,
+  });
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
