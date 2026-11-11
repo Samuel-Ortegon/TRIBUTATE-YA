@@ -77,3 +77,10 @@
 - Smoke web/API: portada, registro, consulta y agenda HTTP 200; disponibilidad pública HTTP 200; API contador sin sesión HTTP 401; `/contador` sin sesión redirige al login. Se abrió la portada y agenda en el navegador.
 - Validaciones finales: `npm.cmd run build` -> ok; `npm.cmd test` -> ok (11 archivos, 53 pruebas); `npm.cmd run lint` -> ok; `npm.cmd run type-check` -> ok.
 - Pendiente de aceptación: probar el inicio de sesión real y recorrer el panel con la cuenta del contador; no se dispone de una sesión autenticada en este contexto. No se modificó ni se imprimió ningún valor de `.env.local`. No se hizo commit.
+
+### Diagnóstico de acceso en producción — 2026-11-11
+- El usuario reportó que al iniciar sesión no llega al panel. La página actual redirige a `/contador` tras una respuesta de autenticación exitosa; el despliegue activo no contenía esa versión.
+- Vercel reportó como `ERROR` el despliegue del commit `1ca38af`, con `npm install` fallido por `ERESOLVE`: `@vercel/connect: latest` instalaba dependencias opcionales que requerían Vite 8, mientras que las pruebas del proyecto usan Vite 7.
+- Se fijaron versiones numéricas para Vercel Connect y Resend, y se agregó un lockfile sincronizado. `.npmrc` desactiva la resolución automática de peers opcionales: Vercel Connect los declara para integraciones que esta aplicación no usa, y su instalación automática estaba introduciendo un Vite incompatible con Vitest.
+- Validación de la corrección: `npm ci --no-audit`, `npm.cmd run build`, `npm.cmd test` (53 pruebas), `npm.cmd run lint` y `npm.cmd run type-check` -> correctos.
+- La corrección del login en producción requiere que este cambio llegue a un nuevo despliegue. La aceptación con una sesión real sigue pendiente.

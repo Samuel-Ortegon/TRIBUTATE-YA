@@ -21,13 +21,13 @@
     "db:verificar": "node --env-file=.env.local scripts/verificar-bd.mjs"
   },
   "dependencies": {
-    "@vercel/connect": "latest",
+    "@vercel/connect": "2.9.1",
     "framer-motion": "^12.23.12",
     "next": "^15.5.2",
     "pg": "^8.16.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "resend": "latest",
+    "resend": "^6.38.0",
     "zod": "^4.1.5"
   },
   "devDependencies": {
