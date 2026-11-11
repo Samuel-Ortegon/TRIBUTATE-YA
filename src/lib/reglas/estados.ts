@@ -56,8 +56,12 @@ export function siguienteEstado(actual: EstadoTramite, evento: EventoTramite): E
   return siguiente;
 }
 
-export function accionesPermitidas(estado: EstadoTramite): AccionContador[] {
-  return [...ACCIONES_POR_ESTADO[estado]];
+export function accionesPermitidas(estado: EstadoTramite, tieneCitaActiva = false): AccionContador[] {
+  const acciones = [...ACCIONES_POR_ESTADO[estado]];
+  if (tieneCitaActiva && !acciones.includes('REPROGRAMAR_CITA')) {
+    acciones.push('REPROGRAMAR_CITA');
+  }
+  return acciones;
 }
 
 export function puedeIniciarTramite(d: {

@@ -84,3 +84,9 @@
 - Se fijaron versiones numéricas para Vercel Connect y Resend, y se agregó un lockfile sincronizado. `.npmrc` desactiva la resolución automática de peers opcionales: Vercel Connect los declara para integraciones que esta aplicación no usa, y su instalación automática estaba introduciendo un Vite incompatible con Vitest.
 - Validación de la corrección: `npm ci --no-audit`, `npm.cmd run build`, `npm.cmd test` (53 pruebas), `npm.cmd run lint` y `npm.cmd run type-check` -> correctos.
 - La corrección del login en producción requiere que este cambio llegue a un nuevo despliegue. La aceptación con una sesión real sigue pendiente.
+
+### Ajuste de reprogramación de citas pagadas — 2026-11-11
+- Se actualizó el panel para mostrar «Reprogramar cita» según la existencia de una cita que siga activa (`agendada`), incluso si el estado general del cliente ya avanzó por el pago.
+- Se conserva la validación del servidor: solo se reprograman citas activas y la operación conserva el pago confirmado.
+- Se agregó una prueba unitaria de la visibilidad de la acción cuando hay cita activa.
+- Validaciones: build, lint y type-check correctos; `npm.cmd test` -> 54 pruebas aprobadas.

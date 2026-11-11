@@ -42,4 +42,9 @@ describe('reglas de estados', () => {
     expect(acciones).toContain('INICIAR_TRAMITE');
     expect(acciones).not.toContain('REGISTRAR_PAGO_SERVICIO');
   });
+
+  it('ofrece reprogramar cuando hay una cita activa aunque el estado del cliente haya avanzado', () => {
+    expect(accionesPermitidas('debe_declarar', true)).toContain('REPROGRAMAR_CITA');
+    expect(accionesPermitidas('debe_declarar')).not.toContain('REPROGRAMAR_CITA');
+  });
 });

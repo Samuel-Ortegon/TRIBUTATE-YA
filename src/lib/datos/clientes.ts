@@ -156,7 +156,11 @@ export async function obtenerDetalleCliente(id: string): Promise<DetalleCliente>
       id: Number(e.id), tipo: e.tipo, estadoAnterior: e.estado_anterior, estadoNuevo: e.estado_nuevo,
       actor: e.actor, detalle: e.detalle, creadoEn: e.creado_en,
     })),
-    acciones: accionesPermitidas(cliente.estado), puedeIniciarTramite: puedeIniciar,
+    acciones: accionesPermitidas(
+      cliente.estado,
+      citas.some((cita) => cita.estado_cita === 'agendada'),
+    ),
+    puedeIniciarTramite: puedeIniciar,
   };
 }
 
