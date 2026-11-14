@@ -15,6 +15,17 @@ export function seCruzan(a: { inicio: number; fin: number }, b: { inicio: number
   return a.inicio < b.fin && b.inicio < a.fin;
 }
 
+export function validarReprogramacionCita(d: {
+  estadoCita: 'agendada' | 'atendida' | 'cancelada';
+  tienePagoProtegido: boolean;
+  origen: OrigenCita;
+}): void {
+  if (d.estadoCita !== 'agendada') throw new ErrorDeNegocio('CITA_NO_MODIFICABLE');
+  if (d.origen === 'cliente' && !d.tienePagoProtegido) {
+    throw new ErrorDeNegocio('CITA_SIN_PAGO');
+  }
+}
+
 export function estaDentroDelHorario(fecha: string, hora: string): boolean {
   const bloques = HORARIO_ATENCION[diaSemanaISO(fecha)] ?? [];
   const inicio = horaAMinutos(hora);

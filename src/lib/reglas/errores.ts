@@ -2,7 +2,7 @@ export type CodigoError =
   | 'DATOS_INVALIDOS' | 'NO_AUTORIZADO' | 'CLIENTE_NO_ENCONTRADO' | 'DATOS_NO_COINCIDEN'
   | 'CC_DUPLICADA' | 'CITA_EN_PASADO' | 'FECHA_FUERA_DE_RANGO' | 'FUERA_DE_HORARIO'
   | 'ANTICIPACION_INSUFICIENTE' | 'CITA_CRUCE_HORARIO' | 'CITA_ACTIVA_EXISTENTE'
-  | 'CITA_NO_ENCONTRADA' | 'CITA_NO_MODIFICABLE' | 'CITA_CON_PAGO'
+  | 'CITA_NO_ENCONTRADA' | 'CITA_NO_MODIFICABLE' | 'CITA_CON_PAGO' | 'CITA_SIN_PAGO'
   | 'ACCION_NO_PERMITIDA_EN_ESTADO' | 'PAGO_CONSULTA_REQUERIDO' | 'PAGO_SERVICIO_NO_DISPONIBLE'
   | 'PAGO_YA_CONFIRMADO' | 'PAGO_NO_ENCONTRADO' | 'PAGO_NO_MODIFICABLE' | 'OBSERVACION_REQUERIDA'
   | 'REVISION_EXISTENTE' | 'REVISION_NO_ENCONTRADA' | 'REVISION_NO_CORREGIBLE'
@@ -23,6 +23,7 @@ export const MENSAJES: Record<CodigoError, string> = {
   CITA_NO_ENCONTRADA: 'La cita no existe.',
   CITA_NO_MODIFICABLE: 'La cita ya fue atendida o cancelada.',
   CITA_CON_PAGO: 'La cita tiene un pago confirmado o en revisión; reprográmela en lugar de cancelarla.',
+  CITA_SIN_PAGO: 'Para reprogramar por este medio, la cita debe tener un pago confirmado o en revisión.',
   ACCION_NO_PERMITIDA_EN_ESTADO: 'Esta acción no está disponible en el estado actual del trámite.',
   PAGO_CONSULTA_REQUERIDO: 'La revisión requiere el pago confirmado de la primera consulta.',
   PAGO_SERVICIO_NO_DISPONIBLE: 'El pago del servicio solo procede cuando el resultado es "Debe declarar".',
@@ -54,6 +55,7 @@ export const ESTADO_HTTP: Record<CodigoError, number> = {
   CITA_NO_ENCONTRADA: 404,
   CITA_NO_MODIFICABLE: 409,
   CITA_CON_PAGO: 409,
+  CITA_SIN_PAGO: 409,
   ACCION_NO_PERMITIDA_EN_ESTADO: 409,
   PAGO_CONSULTA_REQUERIDO: 409,
   PAGO_SERVICIO_NO_DISPONIBLE: 409,

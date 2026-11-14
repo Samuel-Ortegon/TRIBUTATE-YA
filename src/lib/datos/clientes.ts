@@ -5,6 +5,7 @@ import { coincidenUltimos4, enmascararCC } from '@/lib/reglas/privacidad';
 import { accionesPermitidas, type EstadoTramite } from '@/lib/reglas/estados';
 import type { CambiosCliente, DatosRegistroCliente, DetalleCliente, FilaCliente, ResultadoFechaLimite } from '@/lib/datos/tipos';
 import { registrarEvento } from '@/lib/datos/eventos';
+import { listarNotas } from '@/lib/datos/notas';
 
 type ClienteFila = {
   id: string; cc: string; nombre: string; telefono: string; correo: string;
@@ -55,6 +56,16 @@ export async function verificarCliente(cc: string, ultimos4: string): Promise<{ 
   return { id: cliente.id, estado: cliente.estado };
 }
 
+export async function obtenerContactoCliente(id: string): Promise<{ nombre: string; correo: string }> {
+  const filas = await consultar<{ nombre: string; correo: string }>(
+    'SELECT nombre, correo FROM clientes WHERE id = $1',
+    [id],
+  );
+  const cliente = filas[0];
+  if (!cliente) throw new ErrorDeNegocio('CLIENTE_NO_ENCONTRADO');
+  return cliente;
+}
+
 export async function listarClientes(filtros: {
   busqueda?: string; estado?: EstadoTramite;
 } = {}): Promise<FilaCliente[]> {
@@ -80,7 +91,7 @@ export async function listarClientes(filtros: {
 }
 
 export async function obtenerDetalleCliente(id: string): Promise<DetalleCliente> {
-  const [clientes, citas, pagos, revisiones, eventos] = await Promise.all([
+  const [clientes, citas, pagos, revisiones, eventos, notas] = await Promise.all([
     consultar<ClienteFila>(
       `SELECT id, cc, nombre, telefono, correo, estado, origen_registro, created_at,
               fecha_limite_renta, fecha_limite_efectiva, origen_fecha_limite
@@ -114,12 +125,13 @@ export async function obtenerDetalleCliente(id: string): Promise<DetalleCliente>
     ),
     consultar<{
       id: number; tipo: string; estado_anterior: string | null; estado_nuevo: string | null;
-      actor: string; detalle: Record<string, unknown>; creado_en: string;
+      actor: 'cliente' | 'contador' | 'sistema'; detalle: Record<string, unknown>; creado_en: string;
     }>(
       `SELECT id, tipo, estado_anterior, estado_nuevo, actor, detalle,
               to_char(created_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI') AS creado_en
        FROM eventos_cliente WHERE cliente_id = $1 ORDER BY created_at DESC LIMIT 100`, [id],
     ),
+    listarNotas(id),
   ]);
   const cliente = clientes[0];
   if (!cliente) throw new ErrorDeNegocio('CLIENTE_NO_ENCONTRADO');
@@ -152,6 +164,7 @@ export async function obtenerDetalleCliente(id: string): Promise<DetalleCliente>
       id: Number(revision.id), citaId: Number(revision.cita_id), resultado: revision.resultado,
       observaciones: revision.observaciones, fechaRevision: revision.fecha_revision,
     } : null,
+    notas,
     eventos: eventos.map((e) => ({
       id: Number(e.id), tipo: e.tipo, estadoAnterior: e.estado_anterior, estadoNuevo: e.estado_nuevo,
       actor: e.actor, detalle: e.detalle, creadoEn: e.creado_en,

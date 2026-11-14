@@ -102,7 +102,7 @@ Se mantiene la lista del plan funcional: cálculo automático de la obligación 
 | Sin abonos: cada pago se evalúa por su monto individual | Las Reglas 1 y 5 evalúan un pago, no una suma de pagos |
 | La fecha límite sale del calendario tributario que carga el contador, según los dos últimos dígitos de la cédula; el contador puede fijar una fecha manual por cliente | La DIAN asigna los vencimientos de personas naturales por los últimos dígitos del NIT; evita digitar la fecha cliente por cliente |
 | El cliente se identifica internamente con UUID; la cédula es única pero no viaja en URLs | Sección 12 del plan funcional: la cédula no se expone innecesariamente |
-| Para ver, agendar o cancelar su cita, el cliente se verifica con cédula y últimos cuatro dígitos del teléfono | Evita que una persona con una cédula ajena vea o cancele citas |
+| Para ver, agendar, reprogramar o cancelar su cita, el cliente se verifica con cédula y últimos cuatro dígitos del teléfono | Evita que una persona con una cédula ajena gestione sus citas |
 | Reprogramar conserva el pago; cancelar solo procede sin pago confirmado ni pago en revisión | Un cliente que ya pagó no debe perder el pago por cambiar la hora |
 | La revisión se puede corregir antes de que exista un pago del servicio no anulado, con motivo obligatorio | Sección 12 del plan funcional: la revisión solo se modifica mediante una operación con reglas |
 | Horario de atención fijo en configuración: lunes a viernes de 08:00 a 12:00 y de 14:00 a 18:00 | El plan funcional no define horario; festivos y bloqueos de agenda quedan fuera de esta versión |
@@ -221,7 +221,7 @@ El panel muestra únicamente las acciones de esta matriz. El servidor vuelve a v
 | RN-13 | Un pago en `requiere_revision` se aprueba con observación de al menos 10 caracteres o se anula. Aprobarlo tiene el mismo efecto que un pago exacto | Agregada (desarrolla Reglas 1 y 5) | Dominio y servicio |
 | RN-14 | Solo puede existir un pago confirmado por cita (consulta) y uno por cliente (servicio) | Agregada | BD índices parciales |
 | RN-15 | Cancelar una cita solo procede si no tiene pago confirmado ni pago en revisión. Los pagos pendientes de esa cita pasan a `anulado`. El trámite vuelve a `registrado` | Agregada | Servicio |
-| RN-16 | Reprogramar solo aplica a citas `agendada`; conserva el pago y repite las validaciones de RN-02 y RN-12 | Agregada | Servicio y BD |
+| RN-16 | Reprogramar solo aplica a citas `agendada`; conserva pagos confirmados o en revisión, y repite las validaciones de RN-02 y RN-12. El cliente puede reprogramar una cita con pago confirmado o en revisión mediante verificación de identidad | Agregada | Servicio y BD |
 | RN-17 | Registrar la revisión marca la cita como `atendida` | Agregada | Servicio |
 | RN-18 | La revisión se corrige solo en `debe_declarar` o `no_debe_declarar`, sin pagos del servicio distintos de `anulado` y con motivo de al menos 10 caracteres | Agregada | Dominio `validarCorreccionRevision` |
 | RN-19 | Los montos se guardan en pesos enteros (`INTEGER`). Cada cita y cada pago guardan el valor vigente al momento de crearse | Agregada | BD; configuración |
@@ -614,6 +614,7 @@ app/api/publico/fecha-limite/route.ts
 app/api/publico/disponibilidad/route.ts
 app/api/publico/citas/route.ts
 app/api/publico/mi-cita/route.ts
+app/api/publico/mi-cita/reprogramar/route.ts
 app/api/publico/mi-cita/cancelar/route.ts
 
 app/api/contador/sesion/route.ts
@@ -935,6 +936,7 @@ Todas las respuestas llevan `Cache-Control: no-store`.
 | `CITA_NO_ENCONTRADA` | 404 | La cita no existe. |
 | `CITA_NO_MODIFICABLE` | 409 | La cita ya fue atendida o cancelada. |
 | `CITA_CON_PAGO` | 409 | La cita tiene un pago confirmado o en revisión; reprográmela en lugar de cancelarla. |
+| `CITA_SIN_PAGO` | 409 | Para reprogramar por este medio, la cita debe tener un pago confirmado o en revisión. |
 | `ACCION_NO_PERMITIDA_EN_ESTADO` | 409 | Esta acción no está disponible en el estado actual del trámite. |
 | `PAGO_CONSULTA_REQUERIDO` | 409 | La revisión requiere el pago confirmado de la primera consulta. |
 | `PAGO_SERVICIO_NO_DISPONIBLE` | 409 | El pago del servicio solo procede cuando el resultado es "Debe declarar". |
@@ -959,6 +961,7 @@ Todas las respuestas llevan `Cache-Control: no-store`.
 | `GET /api/publico/disponibilidad?fecha=YYYY-MM-DD` | | `{ fecha, horarios: string[] }` | `DATOS_INVALIDOS` |
 | `POST /api/publico/citas` | `{ cc, ultimos4, fecha, hora }` | `{ fecha, hora, horaFin, valor, instruccionesPago }` (201) | `DATOS_NO_COINCIDEN` y los de CU-04 |
 | `POST /api/publico/mi-cita` | `{ cc, ultimos4 }` | `{ cita: CitaResumen \| null, estadoTramite, etiquetaEstado }` | `DATOS_NO_COINCIDEN` |
+| `POST /api/publico/mi-cita/reprogramar` | `{ cc, ultimos4, fecha, hora }` | `{ reprogramada: true, cita }` | `DATOS_NO_COINCIDEN`, `CITA_NO_ENCONTRADA`, `CITA_SIN_PAGO` y los de horario |
 | `POST /api/publico/mi-cita/cancelar` | `{ cc, ultimos4, motivo? }` | `{ cancelada: true }` | `DATOS_NO_COINCIDEN`, `CITA_NO_ENCONTRADA`, `CITA_CON_PAGO` |
 
 La cédula viaja en el cuerpo de peticiones `POST`, nunca en la URL. Las respuestas públicas no devuelven la cédula, el teléfono ni el correo. `disponibilidad` pública usa `origen: 'cliente'`.
@@ -1020,7 +1023,7 @@ La cédula viaja en el cuerpo de peticiones `POST`, nunca en la URL. Las respues
 | `/` | Título "Agenda tributaria". Texto: "Consulte su fecha límite de declaración de renta y agende su primera consulta con el contador." Tres tarjetas con enlace: Registrarme, Consultar mi fecha límite, Agendar o ver mi cita. Recuadro informativo: primera consulta de 30 minutos por $50.000. Pie con el aviso de tratamiento de datos (10.3). Si `app/page.tsx` ya tiene contenido propio del proyecto, se conserva y se agregan las tres tarjetas. |
 | `/registro` | Formulario: cédula, nombre completo, teléfono, correo, casilla de autorización con el texto de 10.3. Validación en el navegador con el mismo esquema Zod. Pantalla de éxito con enlace a `/agendar`. Si la cédula existe: mensaje de `CC_DUPLICADA`. |
 | `/consulta` | Campo de cédula. Resultado: fecha en formato largo ("15 de agosto de 2026"), insignia del estado de fecha y texto de días ("Faltan 10 días", "Vence hoy", "Venció hace 3 días"). Sin fecha: "Aún no hay fecha límite registrada para su cédula". No registrado: mensaje de `CLIENTE_NO_ENCONTRADO` y enlace a `/registro`. |
-| `/agendar` | Paso 1: verificación con cédula y últimos cuatro dígitos del teléfono. Paso 2a, si tiene cita activa: resumen (fecha, hora, estado del pago, estado del trámite) y botón "Cancelar cita" cuando aplique. Paso 2b, si no tiene cita: selector de fecha (hoy a 30 días), cuadrícula de horas disponibles como botones, confirmación. Pantalla final con resumen e `INSTRUCCIONES_PAGO`. Si el trámite ya avanzó más allá de la cita: mensaje con la etiqueta del estado. |
+| `/agendar` | Paso 1: verificación con cédula y últimos cuatro dígitos del teléfono. Paso 2a, si tiene cita activa: resumen (fecha, hora, estado del pago, estado del trámite); si no está pagada ni en revisión, puede cancelar; si está pagada o en revisión, puede reprogramarla y conserva el pago. Paso 2b, si no tiene cita: selector de fecha (hoy a 30 días), cuadrícula de horas disponibles como botones, confirmación. Pantalla final con resumen e `INSTRUCCIONES_PAGO`. Si el trámite ya avanzó más allá de la cita: mensaje con la etiqueta del estado. |
 
 ### 10.2 Panel del contador
 

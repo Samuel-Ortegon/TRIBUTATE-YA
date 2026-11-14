@@ -96,6 +96,11 @@ export const esquemaObservacion = z.string()
   .trim()
   .min(10, 'La observación debe tener al menos 10 caracteres.');
 
+export const esquemaNotaCliente = z.object({
+  texto: z.string().trim().min(3, 'La nota debe tener al menos 3 caracteres.')
+    .max(2000, 'La nota no puede superar 2000 caracteres.'),
+});
+
 export const esquemaRevision = z.object({
   citaId: z.number().int('El identificador de la cita debe ser entero.'),
   resultado: esquemaResultado,

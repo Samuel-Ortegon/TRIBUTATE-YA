@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   esquemaFecha,
   esquemaPago,
+  esquemaNotaCliente,
   esquemaRegistroCliente,
   esquemaRango,
 } from '@/lib/validacion/esquemas';
 import {
+  describirEvento,
   formatearFechaLarga,
+  formatearFechaHora,
   formatearHora,
   formatearPesos,
   textoDiasRestantes,
@@ -50,6 +53,12 @@ describe('esquemas de validación', () => {
       fechaLimite: '2026-08-15',
     }).success).toBe(false);
   });
+
+  it('valida notas del contador y recorta espacios exteriores', () => {
+    expect(esquemaNotaCliente.parse({ texto: '  Llamar al cliente  ' }).texto).toBe('Llamar al cliente');
+    expect(esquemaNotaCliente.safeParse({ texto: '  ' }).success).toBe(false);
+    expect(esquemaNotaCliente.safeParse({ texto: 'x'.repeat(2001) }).success).toBe(false);
+  });
 });
 
 describe('formato de datos', () => {
@@ -63,6 +72,27 @@ describe('formato de datos', () => {
 
   it('formatea horas en formato de 12 horas', () => {
     expect(formatearHora('14:30')).toBe('2:30 p. m.');
+  });
+
+  it('formatea una marca de tiempo en Bogotá y describe eventos del historial', () => {
+    expect(formatearFechaHora('2026-08-15 14:30')).toBe('15 de agosto de 2026 · 2:30 p. m.');
+    expect(describirEvento({
+      tipo: 'PAGO_REGISTRADO',
+      estadoAnterior: null,
+      estadoNuevo: null,
+      detalle: { tipo: 'primera_consulta', monto: 50_000, estado: 'confirmado' },
+    })).toBe('Pago de primera consulta registrado por $ 50.000: confirmado');
+    expect(describirEvento({
+      tipo: 'CITA_REPROGRAMADA',
+      estadoAnterior: null,
+      estadoNuevo: null,
+      detalle: {
+        fechaAnterior: '2026-08-15',
+        horaAnterior: '10:00',
+        fecha: '2026-08-16',
+        hora: '11:00',
+      },
+    })).toBe('Cita reprogramada de 2026-08-15 10:00 a 2026-08-16 11:00');
   });
 
   it('genera textos singulares, plurales y de estados de fecha', () => {

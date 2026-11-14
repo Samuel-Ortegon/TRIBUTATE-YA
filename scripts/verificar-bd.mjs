@@ -25,7 +25,7 @@ async function principal() {
 
   printLine('Verificando base de datos', connectionString.replace(/:[^@]+@/, ':***@'));
 
-  const tablas = ['calendario_renta', 'clientes', 'citas', 'pagos', 'revisiones', 'eventos_cliente'];
+  const tablas = ['calendario_renta', 'clientes', 'citas', 'pagos', 'revisiones', 'eventos_cliente', 'notas_cliente'];
   for (const tabla of tablas) {
     const rows = await ejecutarConsulta(
       `SELECT EXISTS (
@@ -68,7 +68,7 @@ async function principal() {
   const rls = await ejecutarConsulta(`
     SELECT relname, relrowsecurity
     FROM pg_class
-    WHERE relname IN ('calendario_renta', 'clientes', 'citas', 'pagos', 'revisiones', 'eventos_cliente');
+    WHERE relname IN ('calendario_renta', 'clientes', 'citas', 'pagos', 'revisiones', 'eventos_cliente', 'notas_cliente');
   `);
   printLine('RLS', JSON.stringify(rls));
 

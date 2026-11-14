@@ -6,6 +6,15 @@ import type { RangoCalendario } from '@/lib/reglas/calendario';
 
 export type DatosRegistroCliente = RegistroCliente;
 export type CambiosCliente = CambiosClienteValidado;
+export type EventoCliente = {
+  id: number; tipo: string; estadoAnterior: string | null; estadoNuevo: string | null;
+  actor: 'cliente' | 'contador' | 'sistema'; detalle: Record<string, unknown>; creadoEn: string;
+};
+export type NotaCliente = { id: number; texto: string; creadoEn: string };
+export type FechaProxima = {
+  id: string; nombre: string; estado: EstadoTramite; fechaLimite: string;
+  estadoFecha: EstadoFecha; diasRestantes: number;
+};
 export type ClienteBasico = { id: string; estado: EstadoTramite };
 export type FilaCliente = {
   id: string; nombre: string; ccEnmascarada: string; telefono: string; estado: EstadoTramite;
@@ -32,17 +41,16 @@ export type DetalleCliente = {
     id: number; citaId: number; resultado: ResultadoRevision;
     observaciones: string | null; fechaRevision: string;
   } | null;
-  eventos: Array<{
-    id: number; tipo: string; estadoAnterior: string | null; estadoNuevo: string | null;
-    actor: string; detalle: Record<string, unknown>; creadoEn: string;
-  }>;
+  notas: NotaCliente[];
+  eventos: EventoCliente[];
   acciones: AccionContador[];
   puedeIniciarTramite: boolean;
 };
 export type ResultadoFechaLimite = { fechaLimite: string | null; estado: EstadoFecha; diasRestantes: number | null };
 export type FilaCalendario = RangoCalendario & { id: number; esDemo: boolean };
 export type CitaResumen = {
-  id: number; fecha: string; hora: string; horaFin: string; valor: number; estadoPago: string;
+  id: number; fecha: string; hora: string; horaFin: string; valor: number;
+  estadoPago: 'pendiente' | 'pagada' | 'requiere_revision';
 };
 export type FilaCita = {
   id: number; clienteId: string; nombre: string; fecha: string; hora: string; horaFin: string;
@@ -58,5 +66,5 @@ export type FilaPago = {
 };
 export type ResumenPanel = {
   porEstado: Record<EstadoTramite, number>; citasHoy: FilaCita[];
-  pagosEnRevision: number; totalClientes: number;
+  pagosEnRevision: number; totalClientes: number; fechasProximas: FechaProxima[];
 };

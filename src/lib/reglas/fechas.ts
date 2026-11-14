@@ -55,6 +55,12 @@ export function diasEntre(desde: string, hasta: string): number {
   return (fechaUTC(hasta) - fechaUTC(desde)) / 86_400_000;
 }
 
+export function estadoFechaLimite(hoy: string, fechaLimite: string): { estado: EstadoFecha; diasRestantes: number };
+export function estadoFechaLimite(hoy: string, fechaLimite: null): { estado: EstadoFecha; diasRestantes: null };
+export function estadoFechaLimite(
+  hoy: string,
+  fechaLimite: string | null,
+): { estado: EstadoFecha; diasRestantes: number | null };
 export function estadoFechaLimite(
   hoy: string,
   fechaLimite: string | null,

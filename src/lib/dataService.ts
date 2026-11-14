@@ -5,6 +5,7 @@ export {
   obtenerDetalleCliente,
   actualizarCliente,
   consultarFechaLimite,
+  obtenerContactoCliente,
 } from '@/lib/datos/clientes';
 export {
   listarCalendario,
@@ -24,6 +25,7 @@ export {
 export { registrarPago, aprobarPago, anularPago, listarPagosEnRevision } from '@/lib/datos/pagos';
 export { registrarRevision, corregirRevision, iniciarTramite } from '@/lib/datos/tramites';
 export { obtenerResumen } from '@/lib/datos/resumen';
+export { listarNotas, agregarNota } from '@/lib/datos/notas';
 export type {
   DatosRegistroCliente,
   ClienteBasico,
@@ -37,4 +39,5 @@ export type {
   DatosPago,
   FilaPago,
   ResumenPanel,
+  NotaCliente,
 } from '@/lib/datos/tipos';

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { obtenerResumen } from '@/lib/dataService';
 import { ETIQUETA_ESTADO } from '@/lib/reglas/estados';
 import { TarjetaIndicador } from '@/components/contador/TarjetaIndicador';
-import { InsigniaEstado } from '@/components/contador/Insignias';
+import { InsigniaEstado, InsigniaFecha } from '@/components/contador/Insignias';
+import { formatearFechaLarga } from '@/lib/formato';
 
 export const dynamic = 'force-dynamic';
 export default async function ResumenContadorPage() {
@@ -17,6 +18,22 @@ export default async function ResumenContadorPage() {
         <TarjetaIndicador titulo="Citas de hoy" valor={resumen.citasHoy.length} href="/contador/agenda" />
         <TarjetaIndicador titulo="Pagos en revisión" valor={resumen.pagosEnRevision} href="/contador/pagos" />
         <TarjetaIndicador titulo="Trámites en proceso" valor={resumen.porEstado.en_proceso} href="/contador/clientes?estado=en_proceso" />
+      </section>
+      <section className="panel-card">
+        <div className="section-heading">
+          <div><p className="eyebrow">Próximos vencimientos</p><h2>Fechas límite próximas</h2></div>
+        </div>
+        {resumen.fechasProximas.length ? (
+          <div className="table-scroll"><table><thead><tr><th>Cliente</th><th>Estado</th><th>Fecha límite</th><th>Tiempo restante</th></tr></thead>
+            <tbody>{resumen.fechasProximas.map((cliente) => (
+              <tr key={cliente.id}>
+                <td><Link href={`/contador/clientes/${cliente.id}`}>{cliente.nombre}</Link></td>
+                <td><InsigniaEstado estado={cliente.estado} /></td>
+                <td>{formatearFechaLarga(cliente.fechaLimite)}</td>
+                <td><InsigniaFecha estado={cliente.estadoFecha} dias={cliente.diasRestantes} /></td>
+              </tr>
+            ))}</tbody></table></div>
+        ) : <div className="empty-state"><h3>No hay vencimientos próximos</h3><p>No se encontraron fechas límite dentro de los próximos 15 días.</p></div>}
       </section>
       <section className="panel-card">
         <div className="section-heading"><div><p className="eyebrow">Seguimiento</p><h2>Clientes por estado</h2></div></div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { ahoraBogota } from '@/lib/reglas/fechas';
 import {
   esquemaAgendarPublico,
   esquemaConsultaFechaLimite,
@@ -91,7 +92,13 @@ export function FormularioConsulta() {
   </>;
 }
 
-type CitaPublica = { fecha: string; hora: string; horaFin: string; valor: number; estadoPago: string };
+type CitaPublica = {
+  fecha: string;
+  hora: string;
+  horaFin: string;
+  valor: number;
+  estadoPago: 'pendiente' | 'pagada' | 'requiere_revision';
+};
 export function FlujoAgendamiento() {
   const [credenciales, setCredenciales] = useState<{ cc: string; ultimos4: string } | null>(null);
   const [estado, setEstado] = useState<EstadoTramite | null>(null);
@@ -102,6 +109,7 @@ export function FlujoAgendamiento() {
   const [confirmacion, setConfirmacion] = useState('');
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const hoy = ahoraBogota().fecha;
 
   async function verificar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault(); setError(''); setOcupado(true);
@@ -156,6 +164,31 @@ export function FlujoAgendamiento() {
     finally { setOcupado(false); }
   }
 
+  async function reprogramar() {
+    if (!credenciales || !hora) return;
+    const validado = esquemaAgendarPublico.safeParse({ ...credenciales, fecha, hora });
+    if (!validado.success) {
+      setError(validado.error.issues[0]?.message ?? 'Seleccione una fecha y una hora.');
+      return;
+    }
+
+    setError('');
+    setOcupado(true);
+    try {
+      const datos = (await postJson('/api/publico/mi-cita/reprogramar', validado.data)).datos;
+      if (!datos?.cita) throw new Error('La respuesta del sistema está incompleta.');
+      setCita(datos.cita as CitaPublica);
+      setFecha('');
+      setHora('');
+      setHorarios([]);
+      setConfirmacion('Su cita fue reprogramada. El pago se conserva.');
+    } catch (causa) {
+      setError(causa instanceof Error ? causa.message : 'No se pudo reprogramar la cita.');
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   return <div className="public-flow">
     {!credenciales && <form className="stack-form form-card" onSubmit={(evento) => void verificar(evento)}>
       <p>Verifique su identidad con la cédula registrada y los últimos cuatro dígitos de su teléfono.</p>
@@ -168,8 +201,35 @@ export function FlujoAgendamiento() {
       {estado && <p className="notice notice-info">Estado del trámite: {ETIQUETA_ESTADO[estado]}.</p>}
       {cita ? <section className="panel-card">
         <h2>Su cita</h2><p>{formatearFechaLarga(cita.fecha)} · {cita.hora} a {cita.horaFin}</p>
-        <p>Valor: {formatearPesos(cita.valor)} · Pago: {cita.estadoPago}</p>
-        <button className="button button-quiet" type="button" disabled={ocupado} onClick={() => void cancelar()}>Cancelar cita</button>
+        <p>Valor: {formatearPesos(cita.valor)} · Pago: {
+          cita.estadoPago === 'pagada' ? 'Pagado' :
+            cita.estadoPago === 'requiere_revision' ? 'En revisión' : 'Pendiente'
+        }</p>
+        {cita.estadoPago === 'pendiente' ? (
+          <button className="button button-quiet" type="button" disabled={ocupado} onClick={() => void cancelar()}>
+            {ocupado ? 'Procesando…' : 'Cancelar cita'}
+          </button>
+        ) : (
+          <div className="stack-form">
+            <p className="muted-text">
+              {cita.estadoPago === 'pagada'
+                ? 'Puede cambiar la fecha y la hora; el pago se conserva.'
+                : 'Su pago está en revisión. Puede cambiar la fecha y la hora; no es posible cancelar la cita.'}
+            </p>
+            <label>Fecha<input type="date" min={hoy} value={fecha} onChange={(evento) => void cargarHorarios(evento.target.value)} required /></label>
+            <fieldset><legend>Horarios disponibles</legend>
+              {horarios.length ? <div className="slot-grid">{horarios.map((slot) => (
+                <button key={slot} type="button" className={`slot-button ${hora === slot ? 'slot-selected' : ''}`} onClick={() => setHora(slot)}>{slot}</button>
+              ))}</div> : fecha
+                ? <p className="muted-text">No hay horarios disponibles para esta fecha.</p>
+                : <p className="muted-text">Seleccione una fecha para ver los horarios.</p>}
+            </fieldset>
+            <p className="muted-text">La nueva cita debe tener al menos 2 horas de anticipación y estar dentro de los próximos 30 días.</p>
+            <button className="button button-primary" type="button" disabled={!hora || ocupado} onClick={() => void reprogramar()}>
+              {ocupado ? 'Reprogramando…' : 'Reprogramar cita'}
+            </button>
+          </div>
+        )}
       </section> : estado === 'registrado' && <>
         <section className="form-card stack-form">
           <label>Fecha<input type="date" value={fecha} onChange={(evento) => void cargarHorarios(evento.target.value)} required /></label>

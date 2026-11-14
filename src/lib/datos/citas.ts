@@ -1,6 +1,11 @@
 import { consultar, conTransaccion } from '@/lib/db/conexion';
 import { DURACION_CITA_MINUTOS, TARIFA_PRIMERA_CONSULTA } from '@/lib/config/negocio';
-import { calcularHorariosDisponibles, validarNuevaCita, type OrigenCita } from '@/lib/reglas/agenda';
+import {
+  calcularHorariosDisponibles,
+  validarNuevaCita,
+  validarReprogramacionCita,
+  type OrigenCita,
+} from '@/lib/reglas/agenda';
 import { ahoraBogota, minutosAHora, horaAMinutos } from '@/lib/reglas/fechas';
 import { ErrorDeNegocio } from '@/lib/reglas/errores';
 import { siguienteEstado } from '@/lib/reglas/estados';
@@ -62,7 +67,13 @@ export async function agendarCita(datos: {
   }
 }
 
-export async function reprogramarCita(citaId: number, fecha: string, hora: string): Promise<void> {
+export async function reprogramarCita(
+  citaId: number,
+  fecha: string,
+  hora: string,
+  origen: OrigenCita = 'contador',
+  clienteIdEsperado?: string,
+): Promise<void> {
   try {
     await conTransaccion(async (tx) => {
       const resultado = await tx.query<{ cliente_id: string }>(
@@ -70,22 +81,44 @@ export async function reprogramarCita(citaId: number, fecha: string, hora: strin
       );
       const citaIdCliente = resultado.rows[0];
       if (!citaIdCliente) throw new ErrorDeNegocio('CITA_NO_ENCONTRADA');
+      if (clienteIdEsperado && citaIdCliente.cliente_id !== clienteIdEsperado) {
+        throw new ErrorDeNegocio('CITA_NO_ENCONTRADA');
+      }
       await bloquearCliente(tx, citaIdCliente.cliente_id);
       const citaResultado = await tx.query<{
-        cliente_id: string; estado_cita: string; inicio: string;
-      }>('SELECT cliente_id, estado_cita, inicio::text AS inicio FROM citas WHERE id = $1 FOR UPDATE', [citaId]);
+        cliente_id: string;
+        estado_cita: 'agendada' | 'atendida' | 'cancelada';
+        inicio: string;
+        tiene_pago_protegido: boolean;
+      }>(
+        `SELECT c.cliente_id, c.estado_cita, c.inicio::text AS inicio,
+                EXISTS (
+                  SELECT 1 FROM pagos p
+                  WHERE p.cita_id = c.id AND p.tipo = 'primera_consulta'
+                    AND p.estado IN ('confirmado', 'requiere_revision')
+                ) AS tiene_pago_protegido
+         FROM citas c WHERE c.id = $1 FOR UPDATE`,
+        [citaId],
+      );
       const cita = citaResultado.rows[0];
       if (!cita) throw new ErrorDeNegocio('CITA_NO_ENCONTRADA');
-      if (cita.estado_cita !== 'agendada') throw new ErrorDeNegocio('CITA_NO_MODIFICABLE');
+      if (clienteIdEsperado && cita.cliente_id !== clienteIdEsperado) {
+        throw new ErrorDeNegocio('CITA_NO_ENCONTRADA');
+      }
+      validarReprogramacionCita({
+        estadoCita: cita.estado_cita,
+        tienePagoProtegido: cita.tiene_pago_protegido,
+        origen,
+      });
       const ocupadas = await tx.query<Ocupada>(
         `SELECT to_char(inicio, 'HH24:MI') AS inicio, to_char(fin, 'HH24:MI') AS fin
          FROM citas WHERE inicio::date = $1 AND estado_cita <> 'cancelada' AND id <> $2`,
         [fecha, citaId],
       );
-      validarNuevaCita({ fecha, hora, origen: 'contador', ahora: ahoraBogota(), ocupadas: ocupadas.rows });
+      validarNuevaCita({ fecha, hora, origen, ahora: ahoraBogota(), ocupadas: ocupadas.rows });
       await tx.query('UPDATE citas SET inicio = $2::timestamp WHERE id = $1', [citaId, `${fecha} ${hora}:00`]);
       await registrarEvento(tx, {
-        clienteId: cita.cliente_id, tipo: 'CITA_REPROGRAMADA', actor: 'contador',
+        clienteId: cita.cliente_id, tipo: 'CITA_REPROGRAMADA', actor: origen,
         detalle: { citaId, fechaAnterior: cita.inicio.slice(0, 10), horaAnterior: cita.inicio.slice(11, 16), fecha, hora },
       });
     });
@@ -144,11 +177,27 @@ export async function cancelarCita(
 
 export async function obtenerCitaActiva(clienteId: string): Promise<CitaResumen | null> {
   const filas = await consultar<{
-    id: number; fecha: string; hora: string; hora_fin: string; valor: number; estado_pago: string;
+    id: number;
+    fecha: string;
+    hora: string;
+    hora_fin: string;
+    valor: number;
+    estado_pago: 'pendiente' | 'pagada' | 'requiere_revision';
   }>(
-    `SELECT id, to_char(inicio, 'YYYY-MM-DD') AS fecha, to_char(inicio, 'HH24:MI') AS hora,
-            to_char(fin, 'HH24:MI') AS hora_fin, valor, estado_pago
-     FROM citas WHERE cliente_id = $1 AND estado_cita = 'agendada'`, [clienteId],
+    `SELECT c.id, to_char(c.inicio, 'YYYY-MM-DD') AS fecha, to_char(c.inicio, 'HH24:MI') AS hora,
+            to_char(c.fin, 'HH24:MI') AS hora_fin, c.valor,
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM pagos p
+                WHERE p.cita_id = c.id AND p.tipo = 'primera_consulta' AND p.estado = 'confirmado'
+              ) THEN 'pagada'
+              WHEN EXISTS (
+                SELECT 1 FROM pagos p
+                WHERE p.cita_id = c.id AND p.tipo = 'primera_consulta' AND p.estado = 'requiere_revision'
+              ) THEN 'requiere_revision'
+              ELSE 'pendiente'
+            END AS estado_pago
+     FROM citas c WHERE c.cliente_id = $1 AND c.estado_cita = 'agendada'`, [clienteId],
   );
   const cita = filas[0];
   return cita ? {

@@ -3,6 +3,7 @@ import {
   calcularHorariosDisponibles,
   seCruzan,
   validarNuevaCita,
+  validarReprogramacionCita,
 } from '@/lib/reglas/agenda';
 import { esperarCodigo } from './ayudas';
 
@@ -117,5 +118,26 @@ describe('reglas de agenda', () => {
     expect(horarios).toHaveLength(15);
     expect(horarios).not.toContain('10:00');
     expect(horarios).toContain('10:30');
+  });
+
+  it('permite al cliente reprogramar una cita activa con pago confirmado o en revisión', () => {
+    expect(() => validarReprogramacionCita({
+      estadoCita: 'agendada',
+      tienePagoProtegido: true,
+      origen: 'cliente',
+    })).not.toThrow();
+  });
+
+  it('rechaza la reprogramación pública sin pago protegido o con una cita cerrada', () => {
+    esperarCodigo(() => validarReprogramacionCita({
+      estadoCita: 'agendada',
+      tienePagoProtegido: false,
+      origen: 'cliente',
+    }), 'CITA_SIN_PAGO');
+    esperarCodigo(() => validarReprogramacionCita({
+      estadoCita: 'atendida',
+      tienePagoProtegido: true,
+      origen: 'cliente',
+    }), 'CITA_NO_MODIFICABLE');
   });
 });

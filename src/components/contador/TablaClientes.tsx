@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { FilaCliente } from '@/lib/datos/tipos';
+import { ETIQUETA_ESTADO, type EstadoTramite } from '@/lib/reglas/estados';
 import { InsigniaEstado, InsigniaFecha } from '@/components/contador/Insignias';
 
 export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
@@ -11,6 +12,7 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
   const ruta = usePathname();
   const parametros = useSearchParams();
   const busquedaActual = parametros.get('busqueda') ?? '';
+  const estadoActual = parametros.get('estado') ?? '';
   const [busqueda, setBusqueda] = useState(busquedaActual);
   useEffect(() => setBusqueda(busquedaActual), [busquedaActual]);
   useEffect(() => {
@@ -24,10 +26,28 @@ export function TablaClientes({ clientes }: { clientes: FilaCliente[] }) {
     return () => window.clearTimeout(temporizador);
   }, [busqueda, parametros, ruta, router]);
 
+  function cambiarEstado(estado: string) {
+    const nuevos = new URLSearchParams(parametros.toString());
+    if (estado) nuevos.set('estado', estado);
+    else nuevos.delete('estado');
+    const query = nuevos.toString();
+    router.replace(query ? `${ruta}?${query}` : ruta);
+  }
+
   return <>
-    <label className="search-field">Buscar por nombre o cédula
-      <input value={busqueda} onChange={(evento) => setBusqueda(evento.target.value)} placeholder="Escriba para buscar" />
-    </label>
+    <div className="client-filters">
+      <label className="search-field">Buscar por nombre o cédula
+        <input value={busqueda} onChange={(evento) => setBusqueda(evento.target.value)} placeholder="Escriba para buscar" />
+      </label>
+      <label className="search-field">Filtrar por estado
+        <select value={estadoActual} onChange={(evento) => cambiarEstado(evento.target.value)}>
+          <option value="">Todos los estados</option>
+          {(Object.keys(ETIQUETA_ESTADO) as EstadoTramite[]).map((estado) => (
+            <option key={estado} value={estado}>{ETIQUETA_ESTADO[estado]}</option>
+          ))}
+        </select>
+      </label>
+    </div>
     {clientes.length ? (
       <>
         <div className="table-scroll desktop-table"><table><thead><tr><th>Nombre</th><th>Cédula</th><th>Teléfono</th><th>Estado</th><th>Fecha límite</th><th></th></tr></thead>

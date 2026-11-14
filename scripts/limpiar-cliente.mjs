@@ -14,6 +14,7 @@ if (!connectionString) throw new Error('No se configuró la conexión de Postgre
 const cliente = createDatabaseClient(connectionString);
 const tablas = [
   ['eventos_cliente', 'DELETE FROM eventos_cliente WHERE cliente_id IN (SELECT id FROM clientes WHERE cc = ANY($1::varchar[]))'],
+  ['notas_cliente', 'DELETE FROM notas_cliente WHERE cliente_id IN (SELECT id FROM clientes WHERE cc = ANY($1::varchar[]))'],
   ['revisiones', 'DELETE FROM revisiones WHERE cliente_id IN (SELECT id FROM clientes WHERE cc = ANY($1::varchar[]))'],
   ['pagos', 'DELETE FROM pagos WHERE cliente_id IN (SELECT id FROM clientes WHERE cc = ANY($1::varchar[]))'],
   ['citas', 'DELETE FROM citas WHERE cliente_id IN (SELECT id FROM clientes WHERE cc = ANY($1::varchar[]))'],

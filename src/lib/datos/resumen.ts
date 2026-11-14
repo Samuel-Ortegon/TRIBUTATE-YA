@@ -1,7 +1,8 @@
 import { consultar } from '@/lib/db/conexion';
-import { ahoraBogota } from '@/lib/reglas/fechas';
+import { DIAS_ALERTA_FECHA_PROXIMA } from '@/lib/config/negocio';
+import { ahoraBogota, estadoFechaLimite, sumarDias } from '@/lib/reglas/fechas';
 import type { EstadoTramite } from '@/lib/reglas/estados';
-import type { FilaCita, ResumenPanel } from '@/lib/datos/tipos';
+import type { FechaProxima, FilaCita, ResumenPanel } from '@/lib/datos/tipos';
 
 const ESTADOS: EstadoTramite[] = [
   'registrado', 'cita_agendada', 'consulta_pagada', 'debe_declarar',
@@ -10,7 +11,7 @@ const ESTADOS: EstadoTramite[] = [
 
 export async function obtenerResumen(): Promise<ResumenPanel> {
   const hoy = ahoraBogota().fecha;
-  const [clientes, citas, pagos] = await Promise.all([
+  const [clientes, citas, pagos, fechas] = await Promise.all([
     consultar<{ estado: EstadoTramite; cantidad: number }>(
       'SELECT estado, count(*)::int AS cantidad FROM clientes GROUP BY estado',
     ),
@@ -28,6 +29,17 @@ export async function obtenerResumen(): Promise<ResumenPanel> {
     consultar<{ cantidad: number }>(
       `SELECT count(*)::int AS cantidad FROM pagos WHERE estado = 'requiere_revision'`,
     ),
+    consultar<{
+      id: string; nombre: string; estado: EstadoTramite; fecha_limite: string; dias_restantes: number;
+    }>(
+      `SELECT id, nombre, estado, to_char(fecha_limite_efectiva, 'YYYY-MM-DD') AS fecha_limite,
+              (fecha_limite_efectiva - $1::date)::int AS dias_restantes
+       FROM v_clientes_fecha
+       WHERE fecha_limite_efectiva BETWEEN $1::date AND $2::date
+         AND estado NOT IN ('no_debe_declarar', 'en_proceso')
+       ORDER BY fecha_limite_efectiva, lower(nombre), id`,
+      [hoy, sumarDias(hoy, DIAS_ALERTA_FECHA_PROXIMA)],
+    ),
   ]);
   const porEstado = Object.fromEntries(ESTADOS.map((estado) => [estado, 0])) as Record<EstadoTramite, number>;
   for (const fila of clientes) porEstado[fila.estado] = Number(fila.cantidad);
@@ -36,8 +48,20 @@ export async function obtenerResumen(): Promise<ResumenPanel> {
     hora: c.hora, horaFin: c.hora_fin, valor: Number(c.valor),
     estadoCita: c.estado_cita, estadoPago: c.estado_pago,
   }));
+  const fechasProximas: FechaProxima[] = fechas.map((fila) => {
+    const estadoFecha = estadoFechaLimite(hoy, fila.fecha_limite);
+    return {
+      id: fila.id,
+      nombre: fila.nombre,
+      estado: fila.estado,
+      fechaLimite: fila.fecha_limite,
+      estadoFecha: estadoFecha.estado,
+      diasRestantes: estadoFecha.diasRestantes,
+    };
+  });
   return {
     porEstado, citasHoy, pagosEnRevision: Number(pagos[0]?.cantidad ?? 0),
     totalClientes: Object.values(porEstado).reduce((total, cantidad) => total + cantidad, 0),
+    fechasProximas,
   };
 }

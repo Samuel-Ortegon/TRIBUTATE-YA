@@ -13,6 +13,7 @@ export const HORARIO_ATENCION: Record<number, Array<[string, string]>> = {
 
 export const ANTICIPACION_MINIMA_CLIENTE_MINUTOS = 120;
 export const DIAS_MAXIMOS_AGENDA = 30;
+export const DIAS_ALERTA_FECHA_PROXIMA = 15;
 export const LONGITUD_MINIMA_OBSERVACION = 10;
 export const INSTRUCCIONES_PAGO =
   'El pago de la primera consulta se realiza por transferencia, Nequi o en efectivo. ' +

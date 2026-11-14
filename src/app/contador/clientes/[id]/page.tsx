@@ -6,6 +6,8 @@ import { formatearFechaLarga, formatearPesos } from '@/lib/formato';
 import { InsigniaEstado, InsigniaFecha } from '@/components/contador/Insignias';
 import { PanelAcciones } from '@/components/contador/PanelAcciones';
 import { TablaPagosCliente } from '@/components/contador/TablaPagosCliente';
+import { LineaDeTiempo } from '@/components/contador/LineaDeTiempo';
+import { NotasCliente } from '@/components/contador/NotasCliente';
 
 export const dynamic = 'force-dynamic';
 export default async function DetalleClientePage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,5 +45,7 @@ export default async function DetalleClientePage({ params }: { params: Promise<{
     <section className="panel-card"><h2>Revisión</h2>
       {detalle.revision ? <div><p>Resultado: <strong>{detalle.revision.resultado === 'debe_declarar' ? 'Debe declarar' : 'No debe declarar'}</strong></p><p>{detalle.revision.observaciones || 'Sin observaciones'}</p><p>{formatearFechaLarga(detalle.revision.fechaRevision)}</p></div> : <p className="muted-text">Sin revisión registrada.</p>}
     </section>
+    <NotasCliente clienteId={detalle.cliente.id} notas={detalle.notas} />
+    <section className="panel-card"><h2>Historial</h2><LineaDeTiempo eventos={detalle.eventos} /></section>
   </div>;
 }

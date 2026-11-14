@@ -14,8 +14,8 @@
 | jose | No existe en package.json |
 | bcryptjs | No existe en package.json |
 | vitest | 3.2.4 |
-| @vercel/connect | Presente como dependencia (`latest`) |
-| resend | Presente como dependencia (`latest`) |
+| @vercel/connect | 2.9.1 |
+| resend | 6.38.0 |
 
 ## 2. Scripts de package.json
 
@@ -50,7 +50,7 @@ src/
 │  │  ├─ correo/
 │  │  │  └─ prueba/
 │  │  ├─ contador/
-│  │  │  ├─ calendario, citas, clientes, disponibilidad, pagos, revisiones, resumen, sesion
+│  │  │  ├─ calendario, citas, clientes, disponibilidad, pagos, revisiones, resumen, sesion, clientes/[id]/notas
 │  │  └─ health/
 │  ├─ agendar/
 │  ├─ consulta/
@@ -76,7 +76,7 @@ src/
 │  ├─ db/
 │  │  └─ conexion.ts
 │  ├─ datos/
-│  │  ├─ calendario.ts, citas.ts, clientes.ts, eventos.ts
+│  │  ├─ calendario.ts, citas.ts, clientes.ts, eventos.ts, notas.ts
 │  │  └─ pagos.ts, resumen.ts, tramites.ts, tipos.ts
 │  ├─ dataService.ts
 │  ├─ http/
@@ -92,7 +92,7 @@ src/
 │  │  ├─ revisiones.ts
 │  │  ├─ calendario.ts
 │  │  └─ privacidad.ts
-│  ├─ correo.ts
+│  ├─ correo.ts (Resend, confirmación de cita)
 │  ├─ formato.ts
 │  ├─ json-db.ts
 │  └─ supabase-config.ts
@@ -109,7 +109,8 @@ supabase/
 │  ├─ 20261003000000_create_users.sql
 │  ├─ 20261004000000_agenda_tablas.sql
 │  ├─ 20261004000001_agenda_vista_seguridad.sql
-│  └─ 20261004000002_agenda_calendario_demo.sql
+│  ├─ 20261004000002_agenda_calendario_demo.sql
+│  └─ 20261004000003_notas_cliente.sql
 tests/
 └─ reglas/ (pruebas unitarias de reglas, esquemas, formato y respuestas)
 public/ (No existe)
@@ -145,7 +146,7 @@ En `tsconfig.json`:
 - Uso del paquete `pg`: conexión en `src/lib/db/conexion.ts`, con parsers para DATE, TIMESTAMP y BIGINT; las transacciones liberan siempre el cliente.
 - Conexión: prioriza `TRIBUTATE_YA_POSTGRES_URL_NON_POOLING`, después las variables PostgreSQL existentes y `DATABASE_URL`; elimina los parámetros SSL de la URL antes de configurar TLS con certificados no verificados, para evitar que `pg` anule la configuración TLS requerida.
 - `src/lib/dataService.ts` es la fachada; las páginas y rutas del módulo la usan sin importar directamente la conexión.
-- Hay migraciones de usuarios y las tres migraciones del módulo Agenda.
+- Hay migraciones de usuarios y cuatro migraciones del módulo Agenda, incluida `notas_cliente`.
 
 ## 7. Migraciones
 
@@ -154,9 +155,10 @@ En `tsconfig.json`:
   - `20261004000000_agenda_tablas.sql`
   - `20261004000001_agenda_vista_seguridad.sql`
   - `20261004000002_agenda_calendario_demo.sql`
+  - `20261004000003_notas_cliente.sql`
   - `20261003000000_create_users.sql`
 - Numeración: ISO-like `YYYYMMDDHHMMSS` con nombre descriptivo.
-- Tabla de control: no existe una tabla `_migrations`; las migraciones de agenda ya fueron aplicadas y verificadas en la Supabase configurada.
+- Tabla de control: `scripts/migrar.mjs` crea y usa `_migrations`.
 - Scripts: `scripts/migrar.mjs` y `scripts/verificar-bd.mjs`; nunca se deben copiar variables de entorno a la documentación.
 
 ## 8. Variables de entorno
@@ -205,7 +207,8 @@ No existe `DATABASE_URL` en `.env.local`.
 
 - Ruta de login: `/login`
 - Archivo de protección de rutas: `src/middleware.ts`
-- Mecanismo de migraciones: el repo tiene migraciones manuales bajo `supabase/migrations/`; no existe un runner de migración
+- Mecanismo de migraciones: `scripts/migrar.mjs` aplica las migraciones de `supabase/migrations/`.
+- Correo de confirmación: Resend usa `RESEND_API_KEY`; `CORREO_REMITENTE` es opcional y debe ser un dominio verificado. El remitente de prueba solo puede entregar a la dirección propietaria de la cuenta.
 - Nombres no aplicables todavía: M1, M2 y M3 del plan no se han materializado en la estructura actual
 - Prefijo de imports para lib: `@/lib`
 
